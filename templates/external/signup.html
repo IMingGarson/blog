@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>註冊 - Timmy Blog</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+          Arial, sans-serif;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 flex items-center justify-center min-h-screen">
+    <div
+      class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 w-full max-w-md"
+    >
+      <!-- 標題區 -->
+      <div class="text-center mb-8">
+        <h1 class="text-2xl font-semibold text-gray-900" id="form-title">
+          建立帳號
+        </h1>
+        <p class="text-gray-500 mt-2 text-sm" id="form-subtitle">
+          歡迎加入 Timmy Blog
+        </p>
+      </div>
+
+      <!-- 步驟 1：註冊表單 -->
+      <form id="register-form" class="space-y-5">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1"
+            >使用者名稱</label
+          >
+          <input
+            type="text"
+            id="reg-username"
+            required
+            class="w-full px-4 py-3 rounded-xl bg-gray-50 border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 transition-colors"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1"
+            >Email (僅限 gmail / hotmail)</label
+          >
+          <input
+            type="email"
+            id="reg-email"
+            required
+            class="w-full px-4 py-3 rounded-xl bg-gray-50 border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 transition-colors"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1"
+            >手機門號 (09開頭10碼)</label
+          >
+          <input
+            type="text"
+            id="reg-phone"
+            required
+            class="w-full px-4 py-3 rounded-xl bg-gray-50 border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 transition-colors"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1"
+            >密碼 (至少8碼)</label
+          >
+          <input
+            type="password"
+            id="reg-password"
+            required
+            class="w-full px-4 py-3 rounded-xl bg-gray-50 border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 transition-colors"
+          />
+        </div>
+
+        <button
+          type="submit"
+          class="w-full bg-black text-white rounded-xl py-3 font-medium hover:bg-gray-800 transition-colors mt-4"
+        >
+          註冊並發送驗證碼
+        </button>
+        <div class="text-center mt-4">
+          <a href="/login" class="text-sm text-blue-600 hover:underline"
+            >已有帳號？點此登入</a
+          >
+        </div>
+      </form>
+
+      <!-- 步驟 2：OTP 驗證表單 (預設隱藏) -->
+      <form id="otp-form" class="space-y-5 hidden">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1"
+            >Email 驗證碼 (6碼)</label
+          >
+          <input
+            type="text"
+            id="otp-email-code"
+            required
+            maxlength="6"
+            class="w-full px-4 py-3 rounded-xl bg-gray-50 border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 transition-colors tracking-widest text-center text-lg"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1"
+            >手機 驗證碼 (6碼)</label
+          >
+          <input
+            type="text"
+            id="otp-phone-code"
+            required
+            maxlength="6"
+            class="w-full px-4 py-3 rounded-xl bg-gray-50 border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 transition-colors tracking-widest text-center text-lg"
+          />
+        </div>
+
+        <button
+          type="submit"
+          class="w-full bg-blue-600 text-white rounded-xl py-3 font-medium hover:bg-blue-700 transition-colors mt-4"
+        >
+          確認驗證
+        </button>
+      </form>
+
+      <!-- 錯誤訊息提示區 -->
+      <div
+        id="error-message"
+        class="text-red-500 text-sm mt-4 text-center hidden"
+      ></div>
+    </div>
+
+    <script>
+      // 取得 Django CSRF Token 的標準函式
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+          const cookies = document.cookie.split(";");
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === name + "=") {
+              cookieValue = decodeURIComponent(
+                cookie.substring(name.length + 1),
+              );
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+
+      const csrftoken = getCookie("csrftoken");
+      const errorDiv = document.getElementById("error-message");
+
+      let currentEmail = "";
+      let currentPhone = "";
+
+      // 步驟 1：處理註冊與請求發送 OTP
+      document
+        .getElementById("register-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          errorDiv.classList.add("hidden");
+
+          const btn = e.target.querySelector("button");
+          btn.disabled = true;
+          btn.innerText = "處理中...";
+
+          const payload = {
+            username: document.getElementById("reg-username").value,
+            email: document.getElementById("reg-email").value,
+            phone_number: document.getElementById("reg-phone").value,
+            password: document.getElementById("reg-password").value,
+          };
+
+          try {
+            // 呼叫註冊 API
+            const regRes = await fetch("/api/users/register", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrftoken,
+              },
+              body: JSON.stringify(payload),
+            });
+
+            const regData = await regRes.json();
+
+            if (!regRes.ok) {
+              throw new Error(JSON.stringify(regData));
+            }
+
+            // 註冊成功，自動呼叫發送 OTP API
+            currentEmail = payload.email;
+            currentPhone = payload.phone_number;
+
+            const otpRes = await fetch("/api/users/request-otp", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrftoken,
+              },
+              body: JSON.stringify({
+                email: currentEmail,
+                phone_number: currentPhone,
+              }),
+            });
+
+            const otpData = await otpRes.json();
+
+            if (!otpRes.ok) {
+              throw new Error(otpData.error || "驗證碼發送失敗");
+            }
+
+            // UI 切換到 OTP 驗證表單
+            document.getElementById("register-form").classList.add("hidden");
+            document.getElementById("otp-form").classList.remove("hidden");
+            document.getElementById("form-title").innerText = "雙重驗證";
+            document.getElementById("form-subtitle").innerText =
+              "驗證碼已發送至您的信箱與手機";
+          } catch (err) {
+            errorDiv.innerText = "註冊資料有誤，請通知管理員";
+            errorDiv.classList.remove("hidden");
+            btn.disabled = false;
+            btn.innerText = "註冊並發送驗證碼";
+          }
+        });
+
+      // 步驟 2：處理 OTP 驗證
+      document
+        .getElementById("otp-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          errorDiv.classList.add("hidden");
+
+          const btn = e.target.querySelector("button");
+          btn.disabled = true;
+          btn.innerText = "驗證中...";
+
+          const payload = {
+            email: currentEmail,
+            phone_number: currentPhone,
+            email_code: document.getElementById("otp-email-code").value,
+            phone_code: document.getElementById("otp-phone-code").value,
+          };
+
+          try {
+            const res = await fetch("/api/users/verify-otp", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrftoken,
+              },
+              body: JSON.stringify(payload),
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+              alert("驗證成功！請登入。");
+              window.location.href = "/login";
+            } else {
+              throw new Error(data.error || JSON.stringify(data));
+            }
+          } catch (err) {
+            errorDiv.innerText = err.message;
+            errorDiv.classList.remove("hidden");
+            btn.disabled = false;
+            btn.innerText = "確認驗證";
+          }
+        });
+    </script>
+  </body>
+</html>

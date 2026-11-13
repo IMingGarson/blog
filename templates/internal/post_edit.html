@@ -1,0 +1,881 @@
+{% extends 'internal/base.html' %}
+{% load static %}
+{% block content %}
+
+<style>
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+    gap: 16px;
+  }
+
+  .page-title {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text-main);
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+  }
+
+  .page-subtitle {
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+
+  .btn-preview {
+    padding: 8px 20px;
+    background-color: #dcfce7;
+    color: #15803d;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+
+  .btn-preview:hover {
+    background-color: #bbf7d0;
+  }
+
+  .title-input {
+    width: 100%;
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--text-main);
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+    padding: 12px 0;
+    margin-bottom: 32px;
+    background: transparent;
+    outline: none;
+    transition: border-color 0.2s ease;
+  }
+
+  .title-input:focus {
+    border-bottom-color: var(--text-main);
+  }
+  .title-input::placeholder {
+    color: #d1d5db;
+  }
+
+  .settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    background-color: #fafafa;
+    padding: 24px;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 32px;
+  }
+
+  .setting-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .setting-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .setting-select {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 15px;
+    border: 1px solid white;
+    border-radius: 12px;
+    background-color: white;
+    color: var(--text-main);
+    outline: none;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: box-shadow 0.2s ease;
+  }
+
+  .setting-select:focus {
+    box-shadow: 0 0 0 2px var(--text-main);
+  }
+
+  @media (max-width: 768px) {
+    .settings-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .editor-container {
+    background-color: white;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 24px;
+  }
+
+  #editorjs {
+    min-height: 400px;
+  }
+
+  .action-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 16px;
+    padding-top: 24px;
+  }
+
+  .btn-cancel {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: color 0.2s ease;
+  }
+
+  .btn-cancel:hover {
+    color: var(--text-main);
+  }
+
+  .btn-submit {
+    padding: 12px 32px;
+    background-color: var(--text-main);
+    color: white;
+    border: none;
+    border-radius: 24px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+
+  .btn-submit:hover {
+    background-color: #333333;
+  }
+  .btn-submit:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  /* Editor.js layout */
+  .ce-block__content,
+  .ce-toolbar__content {
+    max-width: 100%;
+  }
+
+  #editorjs h2 {
+    margin: 1.5em 0 0.5em;
+    font-size: 1.5em;
+  }
+
+  #editorjs h3 {
+    margin: 1.2em 0 0.5em;
+    font-size: 1.25em;
+  }
+
+  #editorjs ul,
+  #editorjs ol {
+    margin: 1em 0 1em 1.5em;
+  }
+
+  #editorjs li {
+    margin-bottom: 0.5em;
+    padding-left: 0.25em;
+  }
+
+  #editorjs .ce-paragraph {
+    line-height: 1.8;
+    color: #374151;
+    font-family: ui-serif, Georgia, serif;
+    font-size: 18px;
+    margin-bottom: 1em;
+  }
+
+  #editorjs .ce-header {
+    font-weight: 800;
+    color: #111827;
+  }
+
+  #editorjs .cdx-quote {
+    margin: 1.5em 0;
+  }
+
+  .codex-editor__redactor {
+    padding-bottom: 50px !important;
+  }
+
+  .editor-help {
+    margin: 0 0 14px;
+    color: #6b7280;
+    font-size: 13px;
+  }
+</style>
+
+<div>
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">編輯文章</h2>
+      <p class="page-subtitle">
+        編輯文章內容，按 Enter 新增區塊，使用左側 ＋ 新增其他區塊
+      </p>
+    </div>
+
+    <!-- <button type="button" onclick="previewDraft()" class="btn-preview">
+      開新分頁預覽
+    </button> -->
+  </div>
+
+  <form id="edit-post-form">
+    {% csrf_token %}
+
+    <input
+      type="text"
+      id="title"
+      name="title"
+      class="title-input"
+      value="{{ post.title|escape }}"
+      placeholder="請輸入令人驚豔的標題..."
+      maxlength="250"
+      required
+    />
+
+    <div class="settings-grid">
+      <div class="setting-field">
+        <label for="visibility" class="setting-label">閱讀權限</label>
+        <select id="visibility" name="visibility" class="setting-select">
+          <option value="0" {% if post.visibility == 0 %}selected{% endif %}>全部人 (Public)</option>
+          <option value="1" {% if post.visibility == 1 %}selected{% endif %}>僅註冊使用者 (Member Only)</option>
+          <option value="2" {% if post.visibility == 2 %}selected{% endif %}>僅訂閱會員 (Premium ★)</option>
+        </select>
+      </div>
+
+      <div class="setting-field">
+        <label for="is_published" class="setting-label">發布狀態</label>
+        <select id="is_published" name="is_published" class="setting-select">
+          <option
+            value="false"
+            {%
+            if
+            not
+            post.is_published
+            %}selected{%
+            endif
+            %}
+          >
+            儲存為草稿 (Draft)
+          </option>
+          <option value="true" {% if post.is_published %}selected{% endif %}>
+            立即發布 (Publish)
+          </option>
+        </select>
+      </div>
+    </div>
+
+    {{ post.content|json_script:"initial-editor-data" }}
+
+    <div class="editor-container">
+      <div id="editorjs"></div>
+    </div>
+
+    <div class="action-footer">
+      <a href="/internal" class="btn-cancel">取消</a>
+      <button type="submit" id="submit-btn" class="btn-submit">更新文章</button>
+    </div>
+  </form>
+</div>
+
+<!-- Editor.js Core and pinned Tools -->
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@2.31.7/dist/editorjs.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/header@2.8.9/dist/header.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/list@2.0.9/dist/editorjs-list.umd.min.js"></script>
+<!-- <script src="https://cdn.jsdelivr.net/npm/@editorjs/simple-image@1.6.0/dist/simple-image.umd.min.js"></script> -->
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/quote@2.7.6/dist/quote.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/underline@1.2.1"></script>
+<script src="{% static 'js/simple-image.js' %}"></script>
+<link rel="stylesheet" href="{% static 'css/simple-image.css' %}">
+<!-- Community Undo/Redo plugin. Version 2.0.28 is documented as beta. -->
+<script src="https://cdn.jsdelivr.net/npm/editorjs-undo@2.0.28"></script>
+
+<script>
+  (function () {
+    "use strict";
+
+    let editor = null;
+    let editorReady = false;
+
+    function getCookie(name) {
+      const cookieString = document.cookie || "";
+      const cookies = cookieString.split(";");
+
+      for (const item of cookies) {
+        const cookie = item.trim();
+        if (cookie.startsWith(name + "=")) {
+          return decodeURIComponent(cookie.slice(name.length + 1));
+        }
+      }
+
+      return null;
+    }
+
+    function checkDependencies() {
+      const dependencies = {
+        EditorJS: window.EditorJS,
+        Header: window.Header,
+        EditorjsList: window.EditorjsList,
+        SimpleImage: SimpleImage,
+        Quote: window.Quote,
+        Underline: window.Underline,
+      };
+
+      const missing = Object.keys(dependencies).filter(function (key) {
+        return typeof dependencies[key] === "undefined";
+      });
+
+      if (missing.length) {
+        console.error("[Editor.js] CDN dependencies missing:", missing);
+        alert(
+          "編輯器套件載入失敗：" +
+            missing.join(", ") +
+            "。請檢查網路/CDN，並查看瀏覽器開發者工具 Console。",
+        );
+        return false;
+      }
+
+      if (typeof window.Undo === "undefined") {
+        console.warn(
+          "[Editor.js] Undo plugin did not load. Editor remains usable, but Undo/Redo plugin is unavailable.",
+        );
+      }
+
+      return true;
+    }
+
+    function getInitialEditorData() {
+      const dataNode = document.getElementById("initial-editor-data");
+
+      if (!dataNode) {
+        return { blocks: [] };
+      }
+
+      let rawData;
+
+      try {
+        rawData = JSON.parse(dataNode.textContent || "null");
+      } catch (error) {
+        console.error("[Editor.js] Initial content JSON parse failed:", error);
+        throw new Error("文章內容格式錯誤，無法載入編輯器。");
+      }
+
+      // Current schema: Django JSONField stores the native Editor.js object.
+      if (
+        rawData &&
+        typeof rawData === "object" &&
+        Array.isArray(rawData.blocks)
+      ) {
+        return rawData;
+      }
+
+      // Backward compatibility for rows that still contain the old HTML string.
+      // New writes are always saved as native Editor.js JSON.
+      if (typeof rawData === "string" && rawData.trim()) {
+        return convertLegacyContent(rawData);
+      }
+
+      if (rawData == null || rawData === "") {
+        return { blocks: [] };
+      }
+
+      throw new Error("文章內容不是有效的 Editor.js JSON 格式。");
+    }
+
+    function convertLegacyContent(legacyContent) {
+      // Older versions stored a wrapper with the original Editor.js JSON in an attribute.
+      const wrapper = document.createElement("div");
+      wrapper.innerHTML = legacyContent;
+
+      const oldEditorNode = wrapper.querySelector(
+        ".editorjs-content[data-raw-json]",
+      );
+      if (oldEditorNode) {
+        try {
+          const oldData = JSON.parse(
+            oldEditorNode.getAttribute("data-raw-json"),
+          );
+          if (oldData && Array.isArray(oldData.blocks)) {
+            return oldData;
+          }
+        } catch (error) {
+          console.warn(
+            "[Editor.js] Legacy embedded JSON could not be parsed.",
+            error,
+          );
+        }
+      }
+
+      // Last-resort import for legacy HTML-only content.
+      const root = oldEditorNode || wrapper;
+      const blocks = [];
+
+      function addList(listNode) {
+        const ordered = listNode.tagName.toLowerCase() === "ol";
+        const items = Array.from(listNode.children)
+          .filter(
+            (child) => child.tagName && child.tagName.toLowerCase() === "li",
+          )
+          .map((li) => ({
+            content: li.innerHTML,
+            items: Array.from(li.children).some((child) =>
+              ["UL", "OL"].includes(child.tagName),
+            )
+              ? Array.from(li.children)
+                  .filter((child) => ["UL", "OL"].includes(child.tagName))
+                  .flatMap((child) => {
+                    const nested = Array.from(child.children)
+                      .filter((nestedLi) => nestedLi.tagName === "LI")
+                      .map((nestedLi) => ({
+                        content: nestedLi.innerHTML,
+                        items: [],
+                      }));
+                    return nested;
+                  })
+              : [],
+          }));
+
+        blocks.push({
+          type: "list",
+          data: {
+            style: ordered ? "ordered" : "unordered",
+            items: items,
+          },
+        });
+      }
+
+      Array.from(root.childNodes).forEach((node) => {
+        if (node.nodeType === Node.TEXT_NODE) {
+          const text = node.textContent.trim();
+          if (text) {
+            blocks.push({
+              type: "paragraph",
+              data: { text: escapeHTML(text) },
+            });
+          }
+          return;
+        }
+
+        if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+        const tag = node.tagName.toLowerCase();
+
+        if (/^h[1-6]$/.test(tag)) {
+          blocks.push({
+            type: "header",
+            data: {
+              text: node.innerHTML,
+              level: Math.min(3, Math.max(2, Number(tag.slice(1)) || 2)),
+            },
+          });
+        } else if (tag === "ul" || tag === "ol") {
+          addList(node);
+        } else if (tag === "blockquote") {
+          blocks.push({
+            type: "quote",
+            data: {
+              text: node.innerHTML,
+              caption: "",
+              alignment: "left",
+            },
+          });
+        } else if (tag === "img") {
+          blocks.push({
+            type: "image",
+            data: {
+              url: node.getAttribute("src") || "",
+              caption: node.getAttribute("alt") || "",
+            },
+          });
+        } else if (tag === "p" || tag === "div") {
+          blocks.push({
+            type: "paragraph",
+            data: { text: node.innerHTML },
+          });
+        }
+      });
+
+      return { blocks: blocks };
+    }
+
+    function initializeEditor() {
+      if (!checkDependencies()) return;
+
+      try {
+        editor = new window.EditorJS({
+          holder: "editorjs",
+          autofocus: true,
+          data: getInitialEditorData(),
+          minHeight: 400,
+          placeholder: "開始撰寫文章，或按 Tab 選擇區塊...",
+          inlineToolbar: true,
+
+          tools: {
+            header: {
+              class: window.Header,
+              inlineToolbar: true,
+              config: {
+                levels: [2, 3],
+                defaultLevel: 2,
+              },
+            },
+
+            list: {
+              class: window.EditorjsList,
+              inlineToolbar: true,
+              config: {
+                defaultStyle: "unordered",
+                maxLevel: 3,
+              },
+            },
+
+            image: {
+              class: SimpleImage,
+              inlineToolbar: true,
+              config: {
+                placeholder: '請輸入圖片網址',
+              },
+            },
+
+            quote: {
+              class: window.Quote,
+              inlineToolbar: true,
+            },
+
+            underline: {
+              class: window.Underline,
+            },
+          },
+
+          onReady: function () {
+            editorReady = true;
+
+            // Official community plugin API: initialize Undo after Editor.js is ready.
+            if (typeof window.Undo === "function") {
+              try {
+                window.editorUndo = new window.Undo({ editor: editor });
+                console.info("[Editor.js] Undo/Redo initialized.");
+              } catch (undoError) {
+                console.error(
+                  "[Editor.js] Undo plugin initialization failed:",
+                  undoError,
+                );
+              }
+            }
+
+            console.info("[Editor.js] Ready.");
+          },
+
+          onChange: function () {
+            // Intentionally do not re-render blocks or move the caret here.
+            // The Undo plugin observes Editor.js changes independently.
+          },
+        });
+
+        editor.isReady.catch(function (error) {
+          editorReady = false;
+          console.error("[Editor.js] Initialization failed:", error);
+          alert("編輯器初始化失敗，請查看 Console。");
+        });
+      } catch (error) {
+        console.error("[Editor.js] Could not create editor:", error);
+        alert("無法建立編輯器：" + (error.message || error));
+      }
+    }
+
+    async function savePost(event) {
+      event.preventDefault();
+
+      if (!editor || !editorReady) {
+        alert("編輯器尚未準備完成，請稍候再試。");
+        return;
+      }
+
+      const form = document.getElementById("edit-post-form");
+      const submitButton = document.getElementById("submit-btn");
+      const originalText = submitButton.textContent;
+
+      if (!form.reportValidity()) return;
+
+      submitButton.disabled = true;
+      submitButton.textContent = "更新中...";
+
+      try {
+        // Store the native Editor.js output JSON directly.
+        const editorData = await editor.save();
+
+        const payload = {
+          title: document.getElementById("title").value.trim(),
+          visibility: Number(document.getElementById("visibility").value),
+          is_published:
+            document.getElementById("is_published").value === "true",
+          content: editorData,
+        };
+
+        const response = await fetch("/api/internal/posts/{{ post.id }}", {
+          method: "PUT",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie("csrftoken") || "",
+          },
+          body: JSON.stringify(payload),
+        });
+
+        let responseData = {};
+        const responseText = await response.text();
+
+        try {
+          responseData = responseText ? JSON.parse(responseText) : {};
+        } catch (_) {
+          responseData = { message: responseText };
+        }
+
+        if (!response.ok) {
+          const message =
+            responseData.detail ||
+            responseData.message ||
+            responseData.error ||
+            "HTTP " + response.status;
+          throw new Error(message);
+        }
+
+        window.location.href = responseData.redirect_url || "/internal";
+      } catch (error) {
+        console.error("[Post] Update failed:", error);
+        alert("文章更新失敗：" + (error.message || "未知錯誤"));
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = originalText;
+      }
+    }
+
+    function escapeHTML(value) {
+      return String(value == null ? "" : value).replace(
+        /[&<>"']/g,
+        function (char) {
+          return {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;",
+          }[char];
+        },
+      );
+    }
+
+    function sanitizeInlineHTML(value) {
+      const parser = new DOMParser();
+      const parsed = parser.parseFromString(
+        "<div>" + String(value || "") + "</div>",
+        "text/html",
+      );
+      const allowedTags = new Set([
+        "B",
+        "STRONG",
+        "I",
+        "EM",
+        "U",
+        "A",
+        "MARK",
+        "CODE",
+        "BR",
+      ]);
+
+      function serialize(node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          return escapeHTML(node.nodeValue);
+        }
+
+        if (node.nodeType !== Node.ELEMENT_NODE) {
+          return "";
+        }
+
+        const tag = node.tagName;
+        if (!allowedTags.has(tag)) {
+          return Array.from(node.childNodes).map(serialize).join("");
+        }
+
+        if (tag === "BR") return "<br>";
+
+        if (tag === "A") {
+          const href = node.getAttribute("href") || "";
+          if (/^(https?:|mailto:)/i.test(href)) {
+            return (
+              '<a href="' +
+              escapeHTML(href) +
+              '" rel="noopener noreferrer" target="_blank">' +
+              Array.from(node.childNodes).map(serialize).join("") +
+              "</a>"
+            );
+          }
+          return Array.from(node.childNodes).map(serialize).join("");
+        }
+
+        const safeTag = tag.toLowerCase();
+        return (
+          "<" +
+          safeTag +
+          ">" +
+          Array.from(node.childNodes).map(serialize).join("") +
+          "</" +
+          safeTag +
+          ">"
+        );
+      }
+
+      return Array.from(parsed.body.firstChild.childNodes)
+        .map(serialize)
+        .join("");
+    }
+
+    function renderListItems(items, ordered) {
+      const tag = ordered ? "ol" : "ul";
+      const rows = (Array.isArray(items) ? items : []).map(function (item) {
+        if (typeof item === "string") {
+          return "<li>" + sanitizeInlineHTML(item) + "</li>";
+        }
+
+        const content = item && item.content ? item.content : "";
+        const children =
+          item && Array.isArray(item.items) && item.items.length
+            ? renderListItems(item.items, ordered)
+            : "";
+
+        return "<li>" + sanitizeInlineHTML(content) + children + "</li>";
+      });
+
+      return "<" + tag + ">" + rows.join("") + "</" + tag + ">";
+    }
+
+    function renderPreviewHTML(data) {
+      const blocks = data && Array.isArray(data.blocks) ? data.blocks : [];
+
+      return blocks
+        .map(function (block) {
+          const item = block.data || {};
+
+          switch (block.type) {
+            case "header": {
+              const level = [2, 3].includes(Number(item.level))
+                ? Number(item.level)
+                : 2;
+              return (
+                "<h" +
+                level +
+                ">" +
+                sanitizeInlineHTML(item.text) +
+                "</h" +
+                level +
+                ">"
+              );
+            }
+
+            case "paragraph":
+              return "<p>" + sanitizeInlineHTML(item.text) + "</p>";
+
+            case "list": {
+              const ordered = item.style === "ordered";
+              return renderListItems(item.items, ordered);
+            }
+
+            case "image": {
+              const url = String(item.url || "");
+              if (!/^https?:\/\//i.test(url)) return "";
+              return (
+                '<figure><img src="' +
+                escapeHTML(url) +
+                '" alt="' +
+                escapeHTML(item.caption || "") +
+                '" style="max-width:100%;height:auto">' +
+                (item.caption
+                  ? "<figcaption>" + escapeHTML(item.caption) + "</figcaption>"
+                  : "") +
+                "</figure>"
+              );
+            }
+
+            case "quote":
+              return (
+                "<blockquote><p>" +
+                sanitizeInlineHTML(item.text) +
+                "</p>" +
+                (item.caption
+                  ? "<cite>" + escapeHTML(item.caption) + "</cite>"
+                  : "") +
+                "</blockquote>"
+              );
+
+            default:
+              return "";
+          }
+        })
+        .join("\n");
+    }
+
+    window.previewDraft = async function () {
+      if (!editor || !editorReady) {
+        alert("編輯器尚未準備完成，請稍候再試。");
+        return;
+      }
+
+      // 1. 先開啟空白分頁，避免非同步 await 後才 open 被瀏覽器視為廣告彈窗擋下
+      const previewWindow = window.open("about:blank", "_blank");
+
+      if (!previewWindow) {
+        alert("瀏覽器阻擋了預覽視窗，請允許此網站開啟彈出式視窗。");
+        return;
+      }
+
+      try {
+        // 2. 取得 Editor.js JSON 格式資料
+        const editorData = await editor.save();
+        
+        // 3. 組合草稿資料 (注意：content 直接傳入 JSON Object)
+        const draftData = {
+          title: document.getElementById("title").value.trim() || "未命名標題",
+          visibility: document.getElementById("visibility").value,
+          is_published: document.getElementById("is_published").value === "true",
+          content: editorData, 
+        };
+
+        // 4. 存入 sessionStorage 供 post_preview.html 讀取
+        sessionStorage.setItem("post_preview_draft", JSON.stringify(draftData));
+
+        // 5. 將剛剛開啟的空白分頁，導向我們真正的預覽路由
+        previewWindow.location.href = "/internal/preview";
+        
+      } catch (error) {
+        previewWindow.close();
+        console.error("[Preview] Failed:", error);
+        alert("產生預覽失敗：" + (error.message || "未知錯誤"));
+      }
+    };
+    
+    function start() {
+      initializeEditor();
+      document
+        .getElementById("edit-post-form")
+        .addEventListener("submit", savePost);
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", start, { once: true });
+    } else {
+      start();
+    }
+  })();
+</script>
+
+{% endblock %}

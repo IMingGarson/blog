@@ -1,0 +1,370 @@
+{% extends 'internal/base.html' %} {% block content %}
+<style>
+  /* Dashboard 專屬樣式 */
+  .dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+  }
+  .header-title h2 {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text-main);
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+  }
+  .header-title p {
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+  .btn-create {
+    display: inline-block;
+    padding: 10px 24px;
+    background-color: var(--text-main);
+    color: white;
+    text-decoration: none;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background-color 0.2s ease;
+  }
+  .btn-create:hover {
+    background-color: #333333;
+  }
+
+  /* 表格樣式 */
+  .table-responsive {
+    overflow-x: auto;
+  }
+  .admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 600px;
+    text-align: left;
+  }
+  .admin-table th {
+    padding: 0 8px 12px 8px;
+    border-bottom: 1px solid var(--text-main);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .admin-table td {
+    padding: 16px 8px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 15px;
+    vertical-align: middle;
+  }
+  .admin-table tr {
+    transition: background-color 0.2s ease;
+  }
+  .admin-table tr:hover {
+    background-color: var(--hover-bg);
+  }
+
+  /* 軟刪除列的特殊樣式 */
+  .row-deleted {
+    background-color: #fafafa;
+  }
+  .row-deleted .title-cell {
+    text-decoration: line-through;
+    color: var(--text-muted);
+  }
+
+  /* 狀態標籤 Badge */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .badge-red {
+    background-color: #fee2e2;
+    color: #dc2626;
+  }
+  .badge-green {
+    background-color: #dcfce7;
+    color: #16a34a;
+  }
+  .badge-gray {
+    background-color: #f3f4f6;
+    color: #6b7280;
+    font-weight: 500;
+  }
+
+  /* 權限文字 */
+  .vis-premium {
+    color: #d97706;
+    font-weight: 600;
+  }
+  .vis-member {
+    color: #2563eb;
+    font-weight: 600;
+  }
+  .vis-public {
+    color: var(--text-muted);
+  }
+
+  /* 操作按鈕 */
+  .action-group {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-action {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+  .btn-amber {
+    background-color: #d97706;
+    color: white;
+  }
+  .btn-amber:hover {
+    background-color: #b45309;
+  }
+  .btn-green {
+    background-color: #16a34a;
+    color: white;
+  }
+  .btn-green:hover {
+    background-color: #15803d;
+  }
+  .btn-blue {
+    background-color: #2563eb;
+    color: white;
+  }
+  .btn-blue:hover {
+    background-color: #1d4ed8;
+  }
+  .btn-red {
+    background-color: #dc2626;
+    color: white;
+  }
+  .btn-red:hover {
+    background-color: #b91c1c;
+  }
+
+  .no-permission {
+    font-size: 12px;
+    color: #9ca3af;
+    font-weight: 500;
+    padding: 0 8px;
+  }
+
+  /* 分頁 */
+  .pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 32px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .page-link {
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+  .page-link:hover {
+    color: var(--text-main);
+  }
+  .page-disabled {
+    color: #d1d5db;
+  }
+  .page-info {
+    color: var(--text-muted);
+  }
+</style>
+
+<div class="dashboard-header">
+  <div class="header-title">
+    <h2>文章管理</h2>
+    <p>管理與發布站內內容</p>
+  </div>
+
+  {% if request.user.is_superuser %}
+  <a href="{% url 'internal_post_create' %}" class="btn-create"> 撰寫新文章 </a>
+  {% endif %}
+</div>
+
+<div class="table-responsive">
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th style="width: auto">標題</th>
+        <th style="width: 100px">狀態</th>
+        <th style="width: 120px">閱讀權限</th>
+        <th style="width: 120px">建立日期</th>
+        <th style="width: 220px; text-align: right">操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for post in posts %}
+      <tr class="{% if post.deleted_at %}row-deleted{% endif %}">
+        <td class="title-cell">{{ post.title }}</td>
+        <td>
+          {% if post.deleted_at %}
+          <span class="badge badge-red">已刪除</span>
+          {% elif post.is_published %}
+          <span class="badge badge-green">已發布</span>
+          {% else %}
+          <span class="badge badge-gray">草稿</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if post.visibility == 2 or post.visibility == '2' %}
+          <span class="vis-premium">★ 僅訂閱</span>
+          {% elif post.visibility == 1 or post.visibility == '1' %}
+          <span class="vis-member">僅註冊</span>
+          {% else %}
+          <span class="vis-public">全部人</span>
+          {% endif %}
+        </td>
+        <td style="color: var(--text-muted)">
+          {{ post.created_at|date:"Y/m/d" }}
+        </td>
+        <td>
+          <div class="action-group">
+            {% if request.user.is_superuser %} {% if post.deleted_at %}
+            <button
+              onclick="restorePost({{ post.id }}, '{{ post.title|escapejs }}')"
+              class="btn-action btn-amber"
+            >
+              復原
+            </button>
+            {% else %}
+            <a
+              href="{% url 'internal_post_preview' post.id %}"
+              target="_blank"
+              class="btn-action btn-green"
+              >預覽</a
+            >
+            <a
+              href="/internal/posts/{{ post.id }}/edit"
+              class="btn-action btn-blue"
+              >編輯</a
+            >
+            <button
+              onclick="deletePost({{ post.id }}, '{{ post.title|escapejs }}')"
+              class="btn-action btn-red"
+            >
+              刪除
+            </button>
+            {% endif %} {% else %} {% if not post.deleted_at %}
+            <a
+              href="{% url 'internal_post_preview' post.id %}"
+              target="_blank"
+              class="btn-action btn-green"
+              >預覽</a
+            >
+            {% endif %}
+            <span class="no-permission">無修改權限</span>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td
+          colspan="5"
+          style="text-align: center; padding: 48px 0; color: var(--text-muted)"
+        >
+          目前還沒有發布任何文章。
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if is_paginated %}
+<div class="pagination">
+  {% if page_obj.has_previous %}
+  <a href="?page={{ page_obj.previous_page_number }}" class="page-link"
+    >&larr; 上一頁</a
+  >
+  {% else %}
+  <span class="page-disabled">&larr; 上一頁</span>
+  {% endif %}
+
+  <span class="page-info"
+    >{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span
+  >
+
+  {% if page_obj.has_next %}
+  <a href="?page={{ page_obj.next_page_number }}" class="page-link"
+    >下一頁 &rarr;</a
+  >
+  {% else %}
+  <span class="page-disabled">下一頁 &rarr;</span>
+  {% endif %}
+</div>
+{% endif %} {% if request.user.is_superuser %}
+<script>
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== "") {
+      const cookies = document.cookie.split(";");
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === name + "=") {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  async function deletePost(postId, postTitle) {
+    if (!confirm(`確定要刪除「${postTitle}」嗎？文章將會隱藏但保留紀錄。`))
+      return;
+    try {
+      const response = await fetch(`/api/internal/posts/${postId}`, {
+        method: "DELETE",
+        headers: { "X-CSRFToken": getCookie("csrftoken") },
+      });
+      if (response.ok) {
+        window.location.reload();
+      } else {
+        alert("刪除失敗，權限不足或系統錯誤。");
+      }
+    } catch (error) {
+      alert("網路連線發生錯誤。");
+    }
+  }
+
+  async function restorePost(postId, postTitle) {
+    if (!confirm(`確定要復原「${postTitle}」嗎？這將使文章重新回到可見狀態。`))
+      return;
+    try {
+      const response = await fetch(`/api/internal/posts/${postId}/restore`, {
+        method: "POST",
+        headers: { "X-CSRFToken": getCookie("csrftoken") },
+      });
+      if (response.ok) {
+        window.location.reload();
+      } else {
+        alert("復原失敗，權限不足或系統錯誤。");
+      }
+    } catch (error) {
+      alert("網路連線發生錯誤。");
+    }
+  }
+</script>
+{% endif %} {% endblock %}

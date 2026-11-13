@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ post.title }} - Timmy Blog</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+          Arial, sans-serif;
+      }
+      .nav-link {
+        position: relative;
+      }
+      .nav-link::after {
+        content: "";
+        position: absolute;
+        width: 100%;
+        transform: scaleX(0);
+        height: 1px;
+        bottom: -2px;
+        left: 0;
+        background-color: currentColor;
+        transform-origin: bottom right;
+        transition: transform 0.25s ease-out;
+      }
+      .nav-link:hover::after {
+        transform: scaleX(1);
+        transform-origin: bottom left;
+      }
+
+      /* Editor.js 前台渲染樣式 */
+      .article-body {
+        font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+        font-size: 1.125rem;
+        line-height: 2;
+        color: #242424;
+      }
+      .article-body p { margin-bottom: 2em; white-space: pre-wrap; }
+      .article-body h2 { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 1.75rem; font-weight: 800; margin: 2.5em 0 1em; color: #111827; letter-spacing: -0.02em; }
+      .article-body h3 { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 1.5rem; font-weight: 800; margin: 2em 0 1em; color: #111827; }
+      .article-body ul { margin: 1.5em 0 2em 1.5em; list-style-type: disc; }
+      .article-body ol { margin: 1.5em 0 2em 1.5em; list-style-type: decimal; }
+      .article-body li { margin-bottom: 0.75em; }
+      .article-body blockquote { border-left: 4px solid #e5e7eb; padding-left: 16px; color: #6b7280; margin: 2em 0; }
+      .article-body figure { margin: 2.5em 0; }
+      .article-body img { width: 100%; height: auto; border-radius: 8px; display: block; }
+      .article-body figcaption { color: #6b7280; font-size: 0.9em; margin-top: 8px; text-align: center; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    </style>
+  </head>
+  <body class="bg-white text-gray-900 min-h-screen flex flex-col selection:bg-gray-200">
+    <header class="bg-white sticky top-0 z-50 border-b border-gray-100">
+      <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        <a href="/" class="text-2xl font-black tracking-tighter">Timmy Blog.</a>
+        <nav class="flex items-center space-x-6 text-sm font-medium text-gray-600">
+          {% if request.user.is_authenticated %}
+          <span class="text-gray-400">嗨, {{ request.user.username }}</span>
+          {% if request.user.is_subscriber %}
+          <span class="text-yellow-600 text-xs font-bold flex items-center gap-1"><span class="text-base">★</span> Premium</span>
+          {% endif %}
+          <a href="/profile" class="nav-link hover:text-black transition-colors">我的帳號</a>
+          <form action="/api/users/logout" method="POST" class="inline">
+            {% csrf_token %}
+            <button type="submit" class="nav-link hover:text-black transition-colors text-gray-500 cursor-pointer">登出</button>
+          </form>
+          {% else %}
+          <a href="/login" class="nav-link hover:text-black transition-colors text-gray-500">登入</a>
+          <a href="/signup" class="bg-black text-white px-5 py-2 rounded-full hover:bg-gray-800 transition-colors">開始閱讀</a>
+          {% endif %}
+        </nav>
+      </div>
+    </header>
+
+    <main class="flex-grow max-w-3xl mx-auto px-6 py-16 w-full">
+      <header class="mb-12">
+        <h1 class="text-4xl md:text-5xl font-black tracking-tight leading-tight mb-8 text-gray-900">
+          {{ post.title }}
+        </h1>
+        <div class="flex items-center space-x-4 mb-8 pb-8 border-b border-gray-100">
+          <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold text-lg">
+            {{ post.author.username|make_list|first|upper }}
+          </div>
+          <div class="flex flex-col justify-center">
+            <span class="font-medium text-gray-900">{{ post.author.username }}</span>
+            <div class="flex items-center gap-x-2 text-sm text-gray-500 mt-1">
+              <time datetime="{{ post.created_at|date:'Y-m-d' }}">{{ post.created_at|date:"Y年 n月 j日" }}</time>
+              {% if post.visibility == 2 or post.visibility == '2' %}
+              <span>·</span>
+              <span class="text-yellow-500 flex items-center gap-1" title="Premium Content"><span class="text-sm leading-none">★</span> Premium</span>
+              {% elif post.visibility == 1 or post.visibility == '1' %}
+              <span>·</span>
+              <span class="text-gray-400">Member Only</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <article class="relative">
+        {% if has_access %}
+          <!-- 授權狀態：安全注入 JSON 資料，交由前端解析渲染 -->
+          {{ post.content|json_script:"post-db-data" }}
+          <div id="article-content" class="article-body max-w-none"></div>
+        {% else %}
+          <!-- 無權限狀態：渲染後端截斷的純文字預覽 -->
+          <div class="article-body max-w-none relative overflow-hidden" style="max-height: 300px">
+            <p class="text-gray-500">{{ teaser_content }}</p>
+            <div class="absolute bottom-0 left-0 w-full h-48 bg-gradient-to-t from-white via-white/80 to-transparent"></div>
+          </div>
+
+          <!-- 鎖定狀態 CTA 區塊 -->
+          <div class="mt-8 pt-12 border-t border-gray-100 text-center relative z-10">
+            {% if post.visibility == 2 or post.visibility == '2' %}
+            <div class="mb-6 flex justify-center"><span class="text-yellow-400 text-5xl">★</span></div>
+            <h3 class="text-2xl font-black text-gray-900 mb-3 tracking-tight">本篇文章為訂閱會員專屬</h3>
+            <p class="text-gray-500 mb-8 max-w-md mx-auto leading-relaxed">升級成為 Premium 訂閱會員，即可解鎖這篇文章以及站內所有深度內容，並支持作者持續創作。</p>
+            {% if request.user.is_authenticated %}
+            <a href="/profile" class="inline-block bg-black text-white font-medium px-8 py-3 rounded-full hover:bg-gray-800 transition-colors">前往訂閱升級</a>
+            {% else %}
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <a href="/signup" class="inline-block bg-black text-white font-medium px-8 py-3 rounded-full hover:bg-gray-800 transition-colors">註冊並訂閱</a>
+              <span class="text-sm text-gray-500">已經有帳號了？ <a href="/login" class="text-black underline underline-offset-4 hover:text-gray-600">立即登入</a></span>
+            </div>
+            {% endif %} 
+            {% elif post.visibility == 1 or post.visibility == '1' %}
+            <h3 class="text-2xl font-black text-gray-900 mb-3 tracking-tight">繼續閱讀完整內容</h3>
+            <p class="text-gray-500 mb-8 max-w-md mx-auto leading-relaxed">免費註冊會員，解鎖更多由作者為您準備的深度觀點與專屬文章。</p>
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <a href="/signup" class="inline-block bg-black text-white font-medium px-8 py-3 rounded-full hover:bg-gray-800 transition-colors">免費註冊</a>
+              <span class="text-sm text-gray-500">已經有帳號了？ <a href="/login" class="text-black underline underline-offset-4 hover:text-gray-600">立即登入</a></span>
+            </div>
+            {% endif %}
+          </div>
+        {% endif %}
+      </article>
+    </main>
+
+    <footer class="bg-white border-t border-gray-100 py-8 text-center text-sm text-gray-400 mt-auto">
+      <p>&copy; 2026 Timmy Blog. All rights reserved.</p>
+    </footer>
+
+    {% if has_access %}
+    <script>
+      (function() {
+        "use strict";
+
+        function escapeHTML(value) {
+          return String(value == null ? "" : value).replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+        }
+
+        function sanitizeInlineHTML(value) {
+          const parser = new DOMParser();
+          const parsed = parser.parseFromString("<div>" + String(value || "") + "</div>", "text/html");
+          const allowedTags = new Set(["B", "STRONG", "I", "EM", "U", "A", "MARK", "CODE", "BR"]);
+
+          function serialize(node) {
+            if (node.nodeType === Node.TEXT_NODE) return escapeHTML(node.nodeValue);
+            if (node.nodeType !== Node.ELEMENT_NODE) return "";
+            const tag = node.tagName;
+            if (!allowedTags.has(tag)) return Array.from(node.childNodes).map(serialize).join("");
+            if (tag === "BR") return "<br>";
+            if (tag === "A") {
+              const href = node.getAttribute("href") || "";
+              if (/^(https?:|mailto:)/i.test(href)) {
+                return '<a href="' + escapeHTML(href) + '" rel="noopener noreferrer" target="_blank">' + Array.from(node.childNodes).map(serialize).join("") + "</a>";
+              }
+              return Array.from(node.childNodes).map(serialize).join("");
+            }
+            return "<" + tag.toLowerCase() + ">" + Array.from(node.childNodes).map(serialize).join("") + "</" + tag.toLowerCase() + ">";
+          }
+          return Array.from(parsed.body.firstChild.childNodes).map(serialize).join("");
+        }
+
+        function renderListItems(items, ordered) {
+          const tag = ordered ? "ol" : "ul";
+          const rows = (Array.isArray(items) ? items : []).map(item => {
+            if (typeof item === "string") return "<li>" + sanitizeInlineHTML(item) + "</li>";
+            const content = item && item.content ? item.content : "";
+            const children = item && Array.isArray(item.items) && item.items.length ? renderListItems(item.items, ordered) : "";
+            return "<li>" + sanitizeInlineHTML(content) + children + "</li>";
+          });
+          return "<" + tag + ">" + rows.join("") + "</" + tag + ">";
+        }
+
+        function renderPreviewHTML(data) {
+          const blocks = data && Array.isArray(data.blocks) ? data.blocks : [];
+          return blocks.map(block => {
+            const item = block.data || {};
+            switch (block.type) {
+              case "header":
+              case "header2":
+              case "header3":
+                const level = [2, 3].includes(Number(item.level)) ? Number(item.level) : (block.type === 'header3' ? 3 : 2);
+                return "<h" + level + ">" + sanitizeInlineHTML(item.text) + "</h" + level + ">";
+              case "paragraph": return "<p>" + sanitizeInlineHTML(item.text) + "</p>";
+              case "list": return renderListItems(item.items, item.style === "ordered");
+              case "image":
+                const url = String(item.url || "");
+                if (!/^https?:\/\//i.test(url)) return "";
+                return '<figure><img src="' + escapeHTML(url) + '" alt="' + escapeHTML(item.caption || "") + '">' + (item.caption ? "<figcaption>" + escapeHTML(item.caption) + "</figcaption>" : "") + "</figure>";
+              case "quote": return "<blockquote><p>" + sanitizeInlineHTML(item.text) + "</p>" + (item.caption ? "<cite>" + escapeHTML(item.caption) + "</cite>" : "") + "</blockquote>";
+              default: return "";
+            }
+          }).join("\n");
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+          const dataNode = document.getElementById("post-db-data");
+          if (!dataNode) return;
+          try {
+            const renderData = JSON.parse(dataNode.textContent);
+            document.getElementById("article-content").innerHTML = renderPreviewHTML(renderData);
+          } catch(e) {
+            console.error("解析文章資料失敗", e);
+            document.getElementById("article-content").innerHTML = "<p>無法載入文章內容。</p>";
+          }
+        });
+      })();
+    </script>
+    {% endif %}
+  </body>
+</html>

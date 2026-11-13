@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>我的帳號 - Timmy Blog</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+    <!-- 導覽列 -->
+    <header class="bg-white/85 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100">
+      <div class="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
+        <a href="/" class="text-xl font-bold tracking-tight">Timmy Blog</a>
+        <nav class="flex items-center space-x-6 text-sm font-medium text-gray-600">
+          <a href="/" class="hover:text-black transition-colors">回首頁</a>
+          <form action="/api/users/logout" method="POST" class="inline">
+            {% csrf_token %}
+            <button type="submit" class="hover:text-black transition-colors text-gray-500 cursor-pointer">登出</button>
+          </form>
+        </nav>
+      </div>
+    </header>
+
+    <!-- 主內容區塊 -->
+    <main class="flex-grow max-w-2xl mx-auto px-6 py-12 w-full">
+      <h1 class="text-3xl font-bold tracking-tight mb-8">我的帳號</h1>
+
+      <!-- 帳號基本資料卡片 -->
+      <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 mb-8">
+        <h2 class="text-xl font-semibold mb-6">基本資料</h2>
+        <div class="space-y-4 text-gray-600">
+          <div class="flex justify-between border-b border-gray-50 pb-4">
+            <span>使用者名稱</span>
+            <span class="font-medium text-gray-900">{{ user.username }}</span>
+          </div>
+          <div class="flex justify-between border-b border-gray-50 pb-4">
+            <span>Email</span>
+            <span class="font-medium text-gray-900">{{ user.email }}</span>
+          </div>
+          <div class="flex justify-between pb-2">
+            <span>手機號碼</span>
+            <span class="font-medium text-gray-900">{{ user.phone_number }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 訂閱方案與手動轉帳區塊 -->
+      <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+        <h2 class="text-xl font-semibold mb-2">訂閱狀態</h2>
+
+        {% if user.is_subscriber %}
+        <!-- 已訂閱狀態 -->
+        <div class="mt-6 p-6 bg-yellow-50 rounded-2xl border border-yellow-100">
+          <div class="flex items-center mb-2">
+            <span class="text-2xl mr-3">★</span>
+            <h3 class="text-lg font-bold text-yellow-800">Premium 會員</h3>
+          </div>
+          <p class="text-yellow-700 text-sm">您已解鎖全站深度內容，感謝您的訂閱支持。</p>
+        </div>
+        {% else %}
+        <!-- 未訂閱狀態 -->
+        <p class="text-gray-500 text-sm mb-6">您目前為免費會員，轉帳解鎖全站深度內容。</p>
+
+        <div class="p-6 bg-gray-50 rounded-2xl border border-gray-200">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold text-gray-900">Premium 深度訂閱</h3>
+            <span class="text-2xl font-extrabold text-gray-900">NT$ 199 <span class="text-sm font-normal text-gray-500">/ 月</span></span>
+          </div>
+
+          <!-- 銀行轉帳資訊 -->
+          <div class="mb-6 p-4 bg-white rounded-xl border border-gray-200 text-sm space-y-1">
+            <p class="font-semibold text-gray-800">匯款銀行：台北富邦銀行 (012)</p>
+            <p class="font-semibold text-gray-800">銀行帳號：1234-5678-9012</p>
+            <p class="text-gray-500 text-xs mt-2">請使用您的常用帳戶轉帳 NT$ 199 元後，於下方填寫轉帳資料與發票資訊。</p>
+          </div>
+
+          <!-- 轉帳與發票申請表單 -->
+          <form id="subscription-form" class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">轉帳帳號後五碼</label>
+              <input type="text" id="account_last_5" maxlength="5" required placeholder="例如：12345" class="w-full px-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-black" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">發票類型</label>
+              <select id="invoice_type" class="w-full px-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-black bg-white">
+                <option value="2">二聯式 (個人)</option>
+                <option value="3">三聯式 (公司)</option>
+              </select>
+            </div>
+
+            <!-- 二聯式欄位 -->
+            <div id="b2c-fields" class="space-y-4">
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">手機條碼載具 (選填)</label>
+                <input type="text" id="invoice_mobile_barcode" placeholder="/ABC1234" class="w-full px-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-black" />
+              </div>
+            </div>
+
+            <!-- 三聯式欄位 -->
+            <div id="b2b-fields" class="space-y-4 hidden">
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">公司抬頭</label>
+                <input type="text" id="invoice_company_name" placeholder="某某股份有限公司" class="w-full px-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-black" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">統一編號 (8碼)</label>
+                <input type="text" id="invoice_tax_id" maxlength="8" placeholder="12345678" class="w-full px-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-black" />
+              </div>
+            </div>
+
+            <!-- 記住此次內容 -->
+            <div class="flex items-center gap-2 pt-2">
+              <input type="checkbox" id="remember_invoice" class="w-4 h-4 text-black border-gray-300 rounded focus:ring-black" />
+              <label for="remember_invoice" class="text-sm text-gray-600 select-none">記住此次發票資訊，下次自動帶入</label>
+            </div>
+
+            <!-- 提交按鈕 -->
+            <button type="submit" id="submit-btn" class="w-full bg-black text-white rounded-xl py-3 font-medium hover:bg-gray-800 transition-colors flex justify-center items-center mt-4">
+              我已轉帳，送出審核申請
+            </button>
+          </form>
+
+          <!-- 狀態提示訊息容器 -->
+          <div id="status-message" class="hidden mt-4 p-4 rounded-xl text-sm text-center font-medium"></div>
+        </div>
+        {% endif %}
+      </div>
+    </main>
+
+    <script>
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+          const cookies = document.cookie.split(";");
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === name + "=") {
+              cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+
+      document.addEventListener("DOMContentLoaded", async () => {
+        const invoiceTypeSelect = document.getElementById("invoice_type");
+        const b2cFields = document.getElementById("b2c-fields");
+        const b2bFields = document.getElementById("b2b-fields");
+
+        // 切換二聯/三聯欄位顯示
+        invoiceTypeSelect.addEventListener("change", (e) => {
+          if (e.target.value === "3") {
+            b2cFields.classList.add("hidden");
+            b2bFields.classList.remove("hidden");
+          } else {
+            b2bFields.classList.add("hidden");
+            b2cFields.classList.remove("hidden");
+          }
+        });
+
+        // 自動帶入使用者先前儲存的預設發票設定
+        try {
+          const res = await fetch("/api/users/invoice-profile", { credentials: "same-origin" });
+          if (res.ok) {
+            const profile = await res.json();
+            if (profile.invoice_type) {
+              invoiceTypeSelect.value = profile.invoice_type;
+              invoiceTypeSelect.dispatchEvent(new Event("change"));
+              if (profile.invoice_type === 3) {
+                document.getElementById("invoice_company_name").value = profile.company_name || "";
+                document.getElementById("invoice_tax_id").value = profile.tax_id || "";
+              } else {
+                document.getElementById("invoice_mobile_barcode").value = profile.mobile_barcode || "";
+              }
+            }
+          }
+        } catch (err) {
+          console.error("無法取得預設發票設定", err);
+        }
+
+        // 提交轉帳申請
+        const form = document.getElementById("subscription-form");
+        if (form) {
+          form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const submitBtn = document.getElementById("submit-btn");
+            const statusMsg = document.getElementById("status-message");
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = "提交中...";
+
+            const payload = {
+              account_last_5: document.getElementById("account_last_5").value.trim(),
+              amount: 199,
+              invoice_type: Number(invoiceTypeSelect.value),
+              invoice_mobile_barcode: document.getElementById("invoice_mobile_barcode").value.trim(),
+              invoice_company_name: document.getElementById("invoice_company_name").value.trim(),
+              invoice_tax_id: document.getElementById("invoice_tax_id").value.trim(),
+              remember_invoice: document.getElementById("remember_invoice").checked
+            };
+
+            try {
+              const response = await fetch("/api/users/payments", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-CSRFToken": getCookie("csrftoken")
+                },
+                body: JSON.stringify(payload)
+              });
+
+              const data = await response.json();
+
+              if (response.ok) {
+                form.style.display = "none";
+                statusMsg.classList.remove("hidden", "bg-red-50", "text-red-700");
+                statusMsg.classList.add("bg-green-50", "text-green-700", "border", "border-green-200");
+                statusMsg.textContent = "已經通知管理員！管理員確認款項並開立發票後將會為您開通權限。";
+              } else {
+                submitBtn.disabled = false;
+                submitBtn.textContent = "我已轉帳，送出審核申請";
+                statusMsg.classList.remove("hidden");
+                statusMsg.classList.add("bg-red-50", "text-red-700", "border", "border-red-200");
+                statusMsg.textContent = data.error || Object.values(data)[0] || "送出失敗，請檢查輸入格式。";
+              }
+            } catch (error) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = "我已轉帳，送出審核申請";
+              statusMsg.classList.remove("hidden");
+              statusMsg.classList.add("bg-red-50", "text-red-700");
+              statusMsg.textContent = "網路連線異常，請稍後再試。";
+            }
+          });
+        }
+      });
+    </script>
+  </body>
+</html>

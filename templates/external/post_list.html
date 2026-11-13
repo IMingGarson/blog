@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Timmy Blog - 探索深度內容</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .nav-link { position: relative; }
+      .nav-link::after { content: ""; position: absolute; width: 100%; transform: scaleX(0); height: 1px; bottom: -2px; left: 0; background-color: currentColor; transform-origin: bottom right; transition: transform 0.25s ease-out; }
+      .nav-link:hover::after { transform: scaleX(1); transform-origin: bottom left; }
+      .hidden-post { display: none !important; }
+    </style>
+  </head>
+  <body class="bg-white text-gray-900 min-h-screen flex flex-col selection:bg-gray-200">
+    <header class="bg-white sticky top-0 z-50 border-b border-gray-100">
+      <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        <a href="/" class="text-2xl font-black tracking-tighter">Timmy Blog.</a>
+        <nav class="flex items-center space-x-6 text-sm font-medium text-gray-600">
+          {% if request.user.is_authenticated %}
+          <span class="text-gray-400">嗨, {{ request.user.username }}</span>
+          {% if request.user.is_subscriber %}
+          <span class="text-yellow-600 text-xs font-bold flex items-center gap-1"><span class="text-base">★</span> Premium</span>
+          {% endif %}
+          <a href="/profile" class="nav-link hover:text-black transition-colors">我的帳號</a>
+          <form action="/api/users/logout" method="POST" class="inline">
+            {% csrf_token %}
+            <button type="submit" class="nav-link hover:text-black transition-colors text-gray-500 cursor-pointer">登出</button>
+          </form>
+          {% else %}
+          <a href="/login" class="nav-link hover:text-black transition-colors text-gray-500">登入</a>
+          <a href="/signup" class="bg-black text-white px-5 py-2 rounded-full hover:bg-gray-800 transition-colors">開始閱讀</a>
+          {% endif %}
+        </nav>
+      </div>
+    </header>
+
+    <main class="flex-grow max-w-6xl mx-auto px-6 py-12 w-full flex flex-col md:flex-row gap-16">
+      <aside class="w-full md:w-1/4">
+        <div class="sticky top-28">
+          <h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">探索內容</h2>
+          <ul class="space-y-4 text-sm font-medium" id="filter-menu">
+            <li>
+              <a href="#" data-filter="all" class="filter-btn flex items-center justify-between text-black transition-colors">全部文章</a>
+            </li>
+            <li>
+              <a href="#" data-filter="2" class="filter-btn flex items-center justify-between text-gray-400 hover:text-black transition-colors">
+                <span class="flex items-center gap-2">訂閱者限定</span>
+                <span class="text-yellow-400 text-base leading-none">★</span>
+              </a>
+            </li>
+          </ul>
+          <hr class="my-8 border-gray-100" />
+          <p class="text-xs text-gray-400 leading-relaxed">Timmy Blog 是一個極簡的深度內容平台。<br />分享觀點，啟發思考。</p>
+        </div>
+      </aside>
+
+      <div class="w-full md:w-3/4">
+        <div class="flex flex-col" id="post-container">
+          {% for post in posts %}
+          <article class="post-item py-8 first:pt-0 group border-b border-gray-100 last:border-0" data-visibility="{{ post.visibility }}">
+            <a href="{% url 'posts:post_detail' post.pk %}" class="block">
+              <div class="flex items-center gap-x-2 text-xs mb-3 text-gray-500">
+                <span class="font-medium text-gray-900">{{ post.author.username }}</span>
+                <span>·</span>
+                <time datetime="{{ post.created_at|date:'Y-m-d' }}">{{ post.created_at|date:"M j, Y" }}</time>
+                {% if post.visibility == 2 %}
+                <span>·</span>
+                <span class="text-yellow-500 flex items-center gap-1" title="Premium Content"><span class="text-sm">★</span> Premium</span>
+                {% elif post.visibility == 1 %}
+                <span>·</span>
+                <span class="text-gray-400">Member Only</span>
+                {% endif %}
+              </div>
+              <h2 class="text-2xl font-extrabold tracking-tight text-gray-900 mb-2 group-hover:text-gray-600 transition-colors line-clamp-2">
+                {{ post.title }}
+              </h2>
+              <p class="text-gray-500 leading-relaxed line-clamp-2 text-base font-serif">
+                {{ post.content }}
+              </p>
+              <div class="mt-4 flex items-center text-xs text-gray-400">
+                <span>閱讀更多 &rarr;</span>
+              </div>
+            </a>
+          </article>
+          {% empty %}
+          <div class="text-center py-20">
+            <h3 class="text-xl font-bold text-gray-900 mb-2">目前尚無文章</h3>
+            <p class="text-gray-500">作者正在努力創作中，請稍後再回來看看。</p>
+          </div>
+          {% endfor %}
+
+          <div id="no-results" class="hidden text-center py-20">
+            <h3 class="text-xl font-bold text-gray-900 mb-2">找不到相符的文章</h3>
+            <p class="text-gray-500">這個分類目前還沒有內容。</p>
+          </div>
+        </div>
+
+        {% if is_paginated %}
+        <div class="flex justify-between items-center text-sm font-medium mt-8">
+          {% if page_obj.has_previous %}
+          <a href="?page={{ page_obj.previous_page_number }}" class="text-gray-500 hover:text-black transition-colors">&larr; 上一頁</a>
+          {% else %}
+          <span class="text-gray-300">&larr; 上一頁</span>
+          {% endif %}
+          <span class="text-gray-400">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+          {% if page_obj.has_next %}
+          <a href="?page={{ page_obj.next_page_number }}" class="text-gray-500 hover:text-black transition-colors">下一頁 &rarr;</a>
+          {% else %}
+          <span class="text-gray-300">下一頁 &rarr;</span>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </main>
+
+    <footer class="bg-white border-t border-gray-100 py-8 text-center text-sm text-gray-400 mt-auto">
+      <p>&copy; 2026 Timmy Blog. All rights reserved.</p>
+    </footer>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const filterBtns = document.querySelectorAll(".filter-btn");
+        const posts = document.querySelectorAll(".post-item");
+        const noResults = document.getElementById("no-results");
+
+        const applyFilter = (filterValue) => {
+          let visibleCount = 0;
+          filterBtns.forEach((btn) => {
+            if (btn.dataset.filter === filterValue) {
+              btn.classList.add("text-black");
+              btn.classList.remove("text-gray-400");
+            } else {
+              btn.classList.remove("text-black");
+              btn.classList.add("text-gray-400");
+            }
+          });
+
+          posts.forEach((post) => {
+            if (filterValue === "all" || post.dataset.visibility === filterValue) {
+              post.classList.remove("hidden-post");
+              visibleCount++;
+            } else {
+              post.classList.add("hidden-post");
+            }
+          });
+
+          if (visibleCount === 0 && posts.length > 0) {
+            noResults.classList.remove("hidden");
+          } else {
+            noResults.classList.add("hidden");
+          }
+
+          const newUrl = new URL(window.location);
+          if (filterValue === "all") {
+            newUrl.searchParams.delete("filter");
+          } else {
+            newUrl.searchParams.set("filter", "subscriber");
+          }
+          window.history.replaceState({}, "", newUrl);
+        };
+
+        filterBtns.forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            applyFilter(btn.dataset.filter);
+          });
+        });
+
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get("filter") === "subscriber") {
+          applyFilter("2"); 
+        }
+      });
+    </script>
+  </body>
+</html>

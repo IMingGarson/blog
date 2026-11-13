@@ -1,0 +1,200 @@
+{% extends 'internal/base.html' %} 
+
+{% block content %}
+<style>
+  .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+  .header-title h2 { font-size: 28px; font-weight: 800; color: var(--text-main); letter-spacing: -0.5px; margin-bottom: 4px; }
+  .header-title p { font-size: 14px; color: var(--text-muted); }
+
+  .table-responsive { overflow-x: auto; }
+  .admin-table { width: 100%; border-collapse: collapse; min-width: 800px; text-align: left; }
+  .admin-table th { padding: 0 8px 12px 8px; border-bottom: 1px solid var(--text-main); font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+  .admin-table td { padding: 16px 8px; border-bottom: 1px solid var(--border-color); font-size: 14px; vertical-align: middle; }
+  .admin-table tr { transition: background-color 0.2s ease; }
+  .admin-table tr:hover { background-color: var(--hover-bg); }
+
+  .row-suspended { background-color: #fafafa; }
+  .row-suspended .user-email { text-decoration: line-through; color: var(--text-muted); }
+
+  .badge { display: inline-flex; align-items: center; justify-content: center; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .badge-red { background-color: #fee2e2; color: #dc2626; }
+  .badge-green { background-color: #dcfce7; color: #16a34a; }
+  .badge-amber { background-color: #fef3c7; color: #d97706; }
+  .badge-gray { background-color: #f3f4f6; color: #6b7280; font-weight: 500; }
+
+  .user-info { display: flex; flex-direction: column; gap: 4px; }
+  .user-email { font-weight: 600; color: var(--text-main); font-size: 15px; }
+  .user-phone { font-size: 13px; color: var(--text-muted); }
+
+  .payment-info { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+  .payment-highlight { font-weight: 600; color: var(--text-main); }
+  .payment-sub { color: var(--text-muted); }
+
+  .action-group { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+  .btn-action { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none; border: none; cursor: pointer; transition: background-color 0.2s ease; }
+  .btn-green { background-color: #16a34a; color: white; }
+  .btn-green:hover { background-color: #15803d; }
+  .btn-red { background-color: #dc2626; color: white; }
+  .btn-red:hover { background-color: #b91c1c; }
+  .btn-amber { background-color: #d97706; color: white; }
+  .btn-amber:hover { background-color: #b45309; }
+
+  .pagination { display: flex; justify-content: space-between; align-items: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border-color); font-size: 14px; font-weight: 500; }
+  .page-link { color: var(--text-muted); text-decoration: none; transition: color 0.2s ease; }
+  .page-link:hover { color: var(--text-main); }
+  .page-disabled { color: #d1d5db; }
+  .page-info { color: var(--text-muted); }
+</style>
+
+<div class="dashboard-header">
+  <div class="header-title">
+    <h2>會員管理</h2>
+    <p>審核訂閱轉帳與帳號權限</p>
+  </div>
+</div>
+
+<div class="table-responsive">
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th style="width: 25%">帳號資訊</th>
+        <th style="width: 15%">訂閱狀態</th>
+        <th style="width: 35%">最新轉帳與發票資訊</th>
+        <th style="width: 10%">註冊日期</th>
+        <th style="width: 15%; text-align: right">操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in users %}
+      <tr class="{% if not user.is_active %}row-suspended{% endif %}">
+        <td>
+          <div class="user-info">
+            <span class="user-email">{{ user.email }}</span>
+            <span class="user-phone">{{ user.username }} · {{ user.phone_number|default:"未提供門號" }}</span>
+          </div>
+        </td>
+
+        <td>
+          {% if not user.is_active %}
+            <span class="badge badge-red">停權中</span>
+          {% elif user.is_subscriber %}
+            <span class="badge badge-green">已訂閱</span>
+          {% elif user.latest_payments and user.latest_payments.0.status == 'PENDING' %}
+            <span class="badge badge-amber">審核中</span>
+          {% else %}
+            <span class="badge badge-gray">未訂閱</span>
+          {% endif %}
+        </td>
+
+        <td>
+          {% if user.latest_payments %}
+            {% with payment=user.latest_payments.0 %}
+            <div class="payment-info">
+              <div class="payment-highlight">金額：${{ payment.amount|floatformat:0 }} | 後五碼：{{ payment.account_last_5 }}</div>
+              {% if payment.invoice_type == 2 %}
+                <div class="payment-sub">二聯式發票 {% if payment.invoice_mobile_barcode %} | 載具：{{ payment.invoice_mobile_barcode }}{% endif %}</div>
+              {% elif payment.invoice_type == 3 %}
+                <div class="payment-sub">三聯式發票 | 抬頭：{{ payment.invoice_company_name }} | 統編：{{ payment.invoice_tax_id }}</div>
+              {% endif %}
+            </div>
+            {% endwith %}
+          {% else %}
+            <span style="color: var(--text-muted); font-size: 13px;">無轉帳紀錄</span>
+          {% endif %}
+        </td>
+
+        <td style="color: var(--text-muted); font-size: 13px;">
+          {{ user.date_joined|date:"Y/m/d" }}
+        </td>
+
+        <td>
+          <div class="action-group">
+            {% if not user.is_active %}
+              <button onclick="handleUserAction({{ user.id }}, 'restore', '確定要復原此帳號嗎？')" class="btn-action btn-amber">復原</button>
+            {% else %}
+              {% if not user.is_subscriber and user.latest_payments and user.latest_payments.0.status == 'PENDING' %}
+                <button onclick="upgradeUser({{ user.id }}, '{{ user.email|escapejs }}')" class="btn-action btn-green">開通權限</button>
+              {% endif %}
+              <button onclick="handleUserAction({{ user.id }}, 'suspend', '確定要停權此帳號嗎？')" class="btn-action btn-red">停權</button>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="5" style="text-align: center; padding: 48px 0; color: var(--text-muted)">
+          目前還沒有註冊的會員。
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if is_paginated %}
+<div class="pagination">
+  {% if page_obj.has_previous %}
+  <a href="?page={{ page_obj.previous_page_number }}" class="page-link">← 上一頁</a>
+  {% else %}
+  <span class="page-disabled">← 上一頁</span>
+  {% endif %}
+  <span class="page-info">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}
+  <a href="?page={{ page_obj.next_page_number }}" class="page-link">下一頁 →</a>
+  {% else %}
+  <span class="page-disabled">下一頁 →</span>
+  {% endif %}
+</div>
+{% endif %}
+
+<script>
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== "") {
+      const cookies = document.cookie.split(";");
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === name + "=") {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  async function handleUserAction(userId, action, confirmMessage) {
+    if (!confirm(confirmMessage)) return;
+    try {
+      const response = await fetch(`/api/internal/users/${userId}/${action}`, {
+        method: "POST",
+        headers: { "X-CSRFToken": getCookie("csrftoken") },
+      });
+      if (response.ok) window.location.reload();
+      else alert("操作失敗。");
+    } catch (error) {
+      alert("網路連線發生錯誤。");
+    }
+  }
+
+  async function upgradeUser(userId, email) {
+    const invoiceNumber = prompt(`確認對帳無誤並已開立發票，要開通 ${email} 的訂閱權限嗎？\n\n請輸入已開立的「發票號碼」以供紀錄（留白亦可）：`, "");
+    if (invoiceNumber === null) return;
+    
+    try {
+      const response = await fetch(`/api/internal/users/${userId}/upgrade`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken") 
+        },
+        body: JSON.stringify({ invoice_number: invoiceNumber.trim() })
+      });
+      if (response.ok) window.location.reload();
+      else alert("開通失敗。");
+    } catch (error) {
+      alert("網路連線發生錯誤。");
+    }
+  }
+</script>
+{% endblock %}
