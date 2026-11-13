@@ -45,7 +45,7 @@ sender_name = "Timmy Blog 系統"
 sender_email = os.environ.get("EMAIL_HOST_USER")
 DEFAULT_FROM_EMAIL = formataddr((sender_name, sender_email))
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 AUTH_USER_MODEL = "users.User"
 
