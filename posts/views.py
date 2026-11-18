@@ -8,13 +8,12 @@ from django.db.models import Prefetch
 from django.views.generic import TemplateView, ListView, DetailView
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.utils.decorators import method_decorator
-from django.views.decorators.cache import cache_page
-from django.views.decorators.vary import vary_on_cookie
 from django.utils.html import strip_tags
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
+from django.views.decorators.cache import never_cache
 
 
 class AdminRequiredMixin(UserPassesTestMixin):
@@ -208,6 +207,7 @@ class ExternalPostListView(EditorJSContentMixin, ListView):
     context_object_name = "posts"
     paginate_by = 10
 
+    @method_decorator(never_cache)
     def dispatch(self, *args, **kwargs):
         return super().dispatch(*args, **kwargs)
 
@@ -234,8 +234,6 @@ class ExternalPostDetailView(EditorJSContentMixin, DetailView):
     template_name = "external/post_detail.html"
     context_object_name = "post"
 
-    @method_decorator(cache_page(86400))
-    @method_decorator(vary_on_cookie)
     def dispatch(self, *args, **kwargs):
         return super().dispatch(*args, **kwargs)
 
