@@ -56,6 +56,7 @@ LOGIN_REDIRECT_URL = "/internal"
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
