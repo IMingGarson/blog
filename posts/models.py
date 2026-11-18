@@ -11,6 +11,7 @@ class Post(models.Model):
 
     title = models.CharField(max_length=255)
     content = models.JSONField(default=dict, blank=True)
+    seo_data = models.JSONField(default=dict, blank=True)
     visibility = models.IntegerField(
         choices=Visibility.choices, default=Visibility.PUBLIC
     )

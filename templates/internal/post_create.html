@@ -222,9 +222,9 @@
       </p>
     </div>
 
-    <button type="button" onclick="previewDraft()" class="btn-preview">
+    <!-- <button type="button" onclick="previewDraft()" class="btn-preview">
       開新分頁預覽
-    </button>
+    </button> -->
   </div>
 
   <form id="create-post-form">
@@ -262,7 +262,29 @@
     <div class="editor-container">
       <div id="editorjs"></div>
     </div>
+    <div class="settings-grid" style="grid-template-columns: 1fr; margin-bottom: 32px;">
+      <h3 style="font-size: 16px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">SEO 設定</h3>      
+      <div class="setting-field" style="margin-bottom: 16px;">
+        <label for="seo_meta_title" class="setting-label">SEO 網頁標題 (Meta Title)</label>
+        <input type="text" id="seo_meta_title" class="setting-select" style="border: 1px solid #e5e7eb;" placeholder="建議 50-60 字元以內，包含核心關鍵字" value="{{ post.seo_data.meta_title|default:'' }}" />
+      </div>
 
+      <div class="setting-field" style="margin-bottom: 16px;">
+        <label for="seo_meta_description" class="setting-label">SEO 描述摘要 (Meta Description)</label>
+        <textarea id="seo_meta_description" class="setting-select" style="border: 1px solid #e5e7eb; height: 80px; resize: vertical;" placeholder="建議 120-150 字元，吸引搜尋者點擊...">{{ post.seo_data.meta_description|default:'' }}</textarea>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="setting-field">
+          <label for="seo_keywords" class="setting-label">SEO 關鍵字 (Keywords)</label>
+          <input type="text" id="seo_keywords" class="setting-select" style="border: 1px solid #e5e7eb;" placeholder="例如: 財經顧問, 理財規劃" value="{{ post.seo_data.keywords|default:'' }}" />
+        </div>
+        <div class="setting-field">
+          <label for="seo_canonical" class="setting-label">SEO Canonical URL</label>
+          <input type="url" id="seo_canonical" class="setting-select" style="border: 1px solid #e5e7eb;" placeholder="https://timmycaptial.com.tw/posts/..." value="{{ post.seo_data.canonical_url|default:'' }}" />
+        </div>
+      </div>
+    </div>
     <div class="action-footer">
       <a href="/internal" class="btn-cancel">取消</a>
       <button type="submit" id="submit-btn" class="btn-submit">儲存文章</button>
@@ -443,6 +465,12 @@
           is_published:
             document.getElementById("is_published").value === "true",
           content: editorData,
+          seo_data: {
+            meta_title: document.getElementById("seo_meta_title").value.trim(),
+            meta_description: document.getElementById("seo_meta_description").value.trim(),
+            keywords: document.getElementById("seo_keywords").value.trim(),
+            canonical_url: document.getElementById("seo_canonical").value.trim()
+          }
         };
 
         const response = await fetch("/api/internal/posts", {
