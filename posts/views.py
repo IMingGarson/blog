@@ -208,8 +208,6 @@ class ExternalPostListView(EditorJSContentMixin, ListView):
     context_object_name = "posts"
     paginate_by = 10
 
-    @method_decorator(cache_page(86400))
-    @method_decorator(vary_on_cookie)
     def dispatch(self, *args, **kwargs):
         return super().dispatch(*args, **kwargs)
 
