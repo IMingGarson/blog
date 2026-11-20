@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-&=76a*vr3@)-%tvmnd#d4^e7y_dh&oj52*d3!8=qr0ve5=6!m+"
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "replace-this-key")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -41,11 +41,12 @@ MAILERS = {
         },
     }
 }
-sender_name = "Timmy Blog 系統"
+sender_name = "Timmy 部落格"
 sender_email = os.environ.get("EMAIL_HOST_USER")
 DEFAULT_FROM_EMAIL = formataddr((sender_name, sender_email))
 
 ALLOWED_HOSTS = ["*"]
+CSRF_TRUSTED_ORIGINS = ["*"]
 
 AUTH_USER_MODEL = "users.User"
 
@@ -56,7 +57,6 @@ LOGIN_REDIRECT_URL = "/internal"
 # Application definition
 
 INSTALLED_APPS = [
-    # "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -64,9 +64,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
-    # For S3
     "storages",
-    # Created Apps
     "users.apps.UsersConfig",
     "posts.apps.PostsConfig",
     "payments.apps.PaymentsConfig",
@@ -104,15 +102,17 @@ WSGI_APPLICATION = "core.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
-
-if os.environ.get("DJANGO_ENV").upper() != "PRODUCTION":
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ.get("DB_NAME", "blog_db"),
+        "USER": os.environ.get("DB_USER", "postgres"),
+        "PASSWORD": os.environ.get("DB_PASSWORD", "your_password"),
+        "HOST": os.environ.get("DB_HOST", "127.0.0.1"),
+        "PORT": os.environ.get("DB_PORT", "5432"),
+        "CONN_MAX_AGE": 60,
     }
-
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
@@ -193,27 +193,21 @@ AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
 AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "ap-east-2")
 AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
 
-# 正式環境下，請將以下設為 True (確保 Session 與 CSRF Token 只在 HTTPS 傳輸)
 if os.environ.get("DJANGO_ENV").upper() == "PRODUCTION":
+    DEBUG = False
+    ALLOWED_HOSTS = [
+        "https://timmycapital.com.tw",
+        "https://www.timmycapital.com.tw",
+    ]
+    CSRF_TRUSTED_ORIGINS = [
+        "https://timmycapital.com.tw",
+        "https://www.timmycapital.com.tw",
+    ]
+    USE_X_FORWARDED_HOST = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_SSL_REDIRECT = True
-
-    # 避免 Clickjacking 攻擊
-    X_FRAME_OPTIONS = "DENY"
-
-    # POSTGRES
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.environ.get("DB_NAME", "blog_db"),
-            "USER": os.environ.get("DB_USER", "postgres"),
-            "PASSWORD": os.environ.get("DB_PASSWORD", "your_password"),
-            "HOST": os.environ.get("DB_HOST", "127.0.0.1"),
-            "PORT": os.environ.get("DB_PORT", "5432"),
-            "CONN_MAX_AGE": 60,
-        }
-    }
+    X_FRAME_OPTIONS = "SAMEORIGIN"
 
     AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY")
     AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
