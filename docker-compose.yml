@@ -51,8 +51,6 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - /home/ubuntu/blog/staticfiles:/home/ubuntu/blog/staticfiles:ro
-    depends_on:
-      - adminer
     networks:
       - app-network
 
