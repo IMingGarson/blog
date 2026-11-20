@@ -25,16 +25,24 @@ services:
     environment:
       MEMCACHED_USER: ${MEMCACHED_USER}
       MEMCACHED_PASSWORD: ${MEMCACHED_PASSWORD}
-    entrypoint: >
-      sh -c "
-      apk add --no-cache cyrus-sasl &&
-      mkdir -p /etc/sasl2 &&
-      echo 'mech_list: plain' > /etc/sasl2/memcached.conf &&
-      echo 'sasldb_path: /etc/sasl2/memcached-sasldb2' >> /etc/sasl2/memcached.conf &&
-      echo \"$$MEMCACHED_PASSWORD\" | saslpasswd2 -p -c -f /etc/sasl2/memcached-sasldb2 -u memcached \"$$MEMCACHED_USER\" &&
-      chown memcache:memcache /etc/sasl2/memcached-sasldb2 &&
-      exec memcached -S -m 128 -u memcache
-      "
+    command: >
+      memcached
+      -m 1024
+      -c 2048
+      -t 4
+      -I 5m
+      -v
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+        reservations:
+          memory: 1024M
+    healthcheck:
+      test: echo stats | nc localhost 11211
+      interval: 30s
+      timeout: 5s
+      retries: 3
     networks:
       - app-network
 
