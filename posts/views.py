@@ -61,6 +61,41 @@ class EditorJSContentMixin:
 
         return " ".join(text_parts)
 
+    def _build_post_namespace(data):
+        seo = data.get("seo_data") or {}
+        author = data.get("author") or {}
+        return SimpleNamespace(
+            id=data.get("id"),
+            pk=data.get("pk", data.get("id")),
+            title=data.get("title", ""),
+            content=data.get("content", ""),
+            visibility=int(data.get("visibility", 0)),
+            created_at=data.get("created_at"),
+            updated_at=data.get("updated_at"),
+            seo_data=SimpleNamespace(
+                meta_title=seo.get("meta_title", ""),
+                meta_description=seo.get("meta_description", ""),
+                keywords=seo.get("keywords", ""),
+                canonical_url=seo.get("canonical_url", ""),
+            ),
+            author=SimpleNamespace(
+                id=author.get("id"),
+                username=author.get("username", ""),
+                email=author.get("email", ""),
+            ),
+        )
+
+    def _extract_seo_dict(post):
+        raw_seo = getattr(post, "seo_data", None) or {}
+        if not isinstance(raw_seo, dict):
+            raw_seo = {}
+        return {
+            "meta_title": raw_seo.get("meta_title", ""),
+            "meta_description": raw_seo.get("meta_description", ""),
+            "keywords": raw_seo.get("keywords", ""),
+            "canonical_url": raw_seo.get("canonical_url", ""),
+        }
+
 
 class InternalDraftPreviewView(AdminRequiredMixin, TemplateView):
     """B端後台：純草稿預覽頁 (依賴前端 sessionStorage 傳遞資料)"""
@@ -232,7 +267,7 @@ class ExternalPostListView(EditorJSContentMixin, ListView):
                 for item in cached_posts
             ]
 
-        print("SINGLE POST GET CACHED, THIS ONLY SHOWED ONCE PER POST")
+        print("LIST GET CACHED, THIS ONLY SHOWED ONCE PER POST")
 
         qs = (
             Post.objects.filter(is_published=True, deleted_at__isnull=True)
@@ -246,12 +281,13 @@ class ExternalPostListView(EditorJSContentMixin, ListView):
             serialized_posts.append(
                 {
                     "id": post.id,
+                    "slug": post.slug,
                     "title": post.title,
                     "content": raw_text[:150] + "...",
                     "visibility": int(post.visibility),
                     "created_at": post.created_at,
                     "updated_at": post.updated_at,
-                    "seo_data": getattr(post, "seo_data", {}),
+                    "seo_data": self._extract_seo_dict(post),
                     "author": {
                         "id": post.author.id,
                         "username": getattr(post.author, "username", ""),
@@ -262,15 +298,7 @@ class ExternalPostListView(EditorJSContentMixin, ListView):
 
         cache.set(cache_key, serialized_posts, timeout=POST_CACHE_TTL)
 
-        return [
-            SimpleNamespace(
-                **{
-                    **item,
-                    "author": SimpleNamespace(**item["author"]),
-                }
-            )
-            for item in serialized_posts
-        ]
+        return [self._build_post_namespace(item) for item in serialized_posts]
 
     def get_context_data(self, **kwargs):
         return super().get_context_data(**kwargs)
@@ -292,7 +320,7 @@ class ExternalPostDetailView(EditorJSContentMixin, DetailView):
         cached_data = cache.get(cache_key)
 
         if cached_data is None:
-            print("LIST GET CACHED, THIS ONLY SHOWED ONCE")
+            print("SINGLE POST GET CACHED, THIS ONLY SHOWED ONCE")
             post = get_object_or_404(
                 Post.objects.filter(
                     is_published=True, deleted_at__isnull=True
@@ -306,7 +334,7 @@ class ExternalPostDetailView(EditorJSContentMixin, DetailView):
                 "visibility": int(post.visibility),
                 "created_at": post.created_at,
                 "updated_at": post.updated_at,
-                "seo_data": getattr(post, "seo_data", {}),
+                "seo_data": self._extract_seo_dict(post),
                 "author": {
                     "id": post.author.id,
                     "username": getattr(post.author, "username", ""),
@@ -315,12 +343,7 @@ class ExternalPostDetailView(EditorJSContentMixin, DetailView):
             }
             cache.set(cache_key, cached_data, timeout=POST_CACHE_TTL)
 
-        return SimpleNamespace(
-            **{
-                **cached_data,
-                "author": SimpleNamespace(**cached_data["author"]),
-            }
-        )
+        return self._build_post_namespace(cached_data)
 
     def get_queryset(self):
         return Post.objects.filter(
