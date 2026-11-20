@@ -197,8 +197,8 @@ AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
 if os.environ.get("DJANGO_ENV").upper() == "PRODUCTION":
     DEBUG = False
     ALLOWED_HOSTS = [
-        "https://timmycapital.com.tw",
-        "https://www.timmycapital.com.tw",
+        "timmycapital.com.tw",
+        "www.timmycapital.com.tw",
     ]
     CSRF_TRUSTED_ORIGINS = [
         "https://timmycapital.com.tw",
