@@ -29,7 +29,7 @@ services:
       MEMCACHED_PASSWORD: ${MEMCACHED_PASSWORD}
     command: >
       sh -c "
-      echo \"$$MEMCACHED_PASSWORD\" | saslpasswd2 -p -c -f /etc/sasl2/memcached-sasldb2 -u memcached \"$$MEMCACHED_USER\" &&
+      echo \"$$MEMCACHED_PASSWORD\" | saslpasswd2 -p -c -a memcached -f /etc/sasl2/memcached-sasldb2 \"$$MEMCACHED_USER\" &&
       chown memcache:memcache /etc/sasl2/memcached-sasldb2 &&
       exec memcached -S -m 1024 -c 2048 -t 4 -I 5m -u memcache
       "
