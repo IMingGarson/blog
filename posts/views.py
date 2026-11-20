@@ -281,7 +281,6 @@ class ExternalPostListView(EditorJSContentMixin, ListView):
             serialized_posts.append(
                 {
                     "id": post.id,
-                    "slug": post.slug,
                     "title": post.title,
                     "content": raw_text[:150] + "...",
                     "visibility": int(post.visibility),
