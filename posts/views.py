@@ -61,7 +61,7 @@ class EditorJSContentMixin:
 
         return " ".join(text_parts)
 
-    def _build_post_namespace(data):
+    def _build_post_namespace(self, data):
         seo = data.get("seo_data") or {}
         author = data.get("author") or {}
         return SimpleNamespace(
@@ -85,7 +85,7 @@ class EditorJSContentMixin:
             ),
         )
 
-    def _extract_seo_dict(post):
+    def _extract_seo_dict(self, post):
         raw_seo = getattr(post, "seo_data", None) or {}
         if not isinstance(raw_seo, dict):
             raw_seo = {}
