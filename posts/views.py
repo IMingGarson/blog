@@ -15,6 +15,12 @@ from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from django.views.decorators.cache import never_cache
 
+from django.core.cache import cache
+from django.http import Http404
+from types import SimpleNamespace
+
+POST_CACHE_TTL = 60 * 60 * 72
+
 
 class AdminRequiredMixin(UserPassesTestMixin):
     """保護 HTML 頁面，未登入或非 Admin 一律導回登入頁"""
@@ -212,19 +218,62 @@ class ExternalPostListView(EditorJSContentMixin, ListView):
         return super().dispatch(*args, **kwargs)
 
     def get_queryset(self):
-        return (
+        cache_key = "external:post_list:published"
+        cached_posts = cache.get(cache_key)
+
+        if cached_posts is not None:
+            return [
+                SimpleNamespace(
+                    **{
+                        **item,
+                        "author": SimpleNamespace(**item["author"]),
+                    }
+                )
+                for item in cached_posts
+            ]
+
+        print("SINGLE POST GET CACHED, THIS ONLY SHOWED ONCE PER POST")
+
+        qs = (
             Post.objects.filter(is_published=True, deleted_at__isnull=True)
             .select_related("author")
             .order_by("-created_at")
         )
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        for post in context["posts"]:
+        serialized_posts = []
+        for post in qs:
             raw_text = self.extract_text_from_editorjs(post.content)
-            post.content = raw_text[:150] + "..."
+            serialized_posts.append(
+                {
+                    "id": post.id,
+                    "title": post.title,
+                    "content": raw_text[:150] + "...",
+                    "visibility": int(post.visibility),
+                    "created_at": post.created_at,
+                    "updated_at": post.updated_at,
+                    "seo_data": getattr(post, "seo_data", {}),
+                    "author": {
+                        "id": post.author.id,
+                        "username": getattr(post.author, "username", ""),
+                        "email": getattr(post.author, "email", ""),
+                    },
+                }
+            )
 
-        return context
+        cache.set(cache_key, serialized_posts, timeout=POST_CACHE_TTL)
+
+        return [
+            SimpleNamespace(
+                **{
+                    **item,
+                    "author": SimpleNamespace(**item["author"]),
+                }
+            )
+            for item in serialized_posts
+        ]
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(**kwargs)
 
 
 class ExternalPostDetailView(EditorJSContentMixin, DetailView):
@@ -237,6 +286,42 @@ class ExternalPostDetailView(EditorJSContentMixin, DetailView):
     def dispatch(self, *args, **kwargs):
         return super().dispatch(*args, **kwargs)
 
+    def get_object(self, queryset=None):
+        post_id = self.kwargs.get(self.pk_url_kwarg)
+        cache_key = f"external:post_detail:{post_id}"
+        cached_data = cache.get(cache_key)
+
+        if cached_data is None:
+            print("LIST GET CACHED, THIS ONLY SHOWED ONCE")
+            post = get_object_or_404(
+                Post.objects.filter(
+                    is_published=True, deleted_at__isnull=True
+                ).select_related("author"),
+                pk=post_id,
+            )
+            cached_data = {
+                "id": post.id,
+                "title": post.title,
+                "content": post.content,
+                "visibility": int(post.visibility),
+                "created_at": post.created_at,
+                "updated_at": post.updated_at,
+                "seo_data": getattr(post, "seo_data", {}),
+                "author": {
+                    "id": post.author.id,
+                    "username": getattr(post.author, "username", ""),
+                    "email": getattr(post.author, "email", ""),
+                },
+            }
+            cache.set(cache_key, cached_data, timeout=POST_CACHE_TTL)
+
+        return SimpleNamespace(
+            **{
+                **cached_data,
+                "author": SimpleNamespace(**cached_data["author"]),
+            }
+        )
+
     def get_queryset(self):
         return Post.objects.filter(
             is_published=True, deleted_at__isnull=True
@@ -247,11 +332,9 @@ class ExternalPostDetailView(EditorJSContentMixin, DetailView):
         post = self.object
         user = self.request.user
 
-        # 預設為擁有權限 (Rule 4: 任何人看 Public 都為 True)
         has_access = True
-        visibility = int(post.visibility)  # 強制轉整數防呆
+        visibility = int(post.visibility)
 
-        # 管理員 (Bypass)
         if user.is_authenticated and (user.is_staff or user.is_superuser):
             has_access = True
         else:
@@ -264,11 +347,10 @@ class ExternalPostDetailView(EditorJSContentMixin, DetailView):
             elif visibility == 2:
                 if (
                     not user.is_authenticated
-                    or getattr(user, "is_subscriber", False) == False
+                    or getattr(user, "is_subscriber", False) is False
                 ):
                     has_access = False
 
-        # 伺服器端資料截斷與銷毀
         if not has_access:
             raw_text = self.extract_text_from_editorjs(post.content)
             context["teaser_content"] = raw_text[:150] + "..."

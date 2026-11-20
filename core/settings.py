@@ -46,7 +46,7 @@ sender_email = os.environ.get("EMAIL_HOST_USER")
 DEFAULT_FROM_EMAIL = formataddr((sender_name, sender_email))
 
 ALLOWED_HOSTS = ["*"]
-CSRF_TRUSTED_ORIGINS = ["*"]
+CSRF_TRUSTED_ORIGINS = []
 
 AUTH_USER_MODEL = "users.User"
 
@@ -194,6 +194,22 @@ AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
 AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "ap-east-2")
 AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
 
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.memcached.PyLibMCCache",
+        "LOCATION": os.environ.get("MEMCACHED_HOST", "127.0.0.1:11211"),
+        "OPTIONS": {
+            "binary": True,
+            "username": os.environ.get("MEMCACHED_USER"),
+            "password": os.environ.get("MEMCACHED_PASSWORD"),
+            "behaviors": {
+                "tcp_nodelay": True,
+                "ketama": True,
+            },
+        },
+    }
+}
+
 if os.environ.get("DJANGO_ENV").upper() == "PRODUCTION":
     DEBUG = False
     ALLOWED_HOSTS = [
@@ -209,12 +225,6 @@ if os.environ.get("DJANGO_ENV").upper() == "PRODUCTION":
     CSRF_COOKIE_SECURE = True
     SECURE_SSL_REDIRECT = True
     X_FRAME_OPTIONS = "SAMEORIGIN"
-
-    AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY")
-    AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
-    AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
-    AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "ap-northeast-1")
-    AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
 
     STORAGES = {
         "default": {
