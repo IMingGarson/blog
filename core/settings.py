@@ -215,6 +215,7 @@ if os.environ.get("DJANGO_ENV").upper() == "PRODUCTION":
     ALLOWED_HOSTS = [
         "timmycapital.com.tw",
         "www.timmycapital.com.tw",
+        "43.213.228.94",
     ]
     CSRF_TRUSTED_ORIGINS = [
         "https://timmycapital.com.tw",

@@ -62,11 +62,12 @@ class EditorJSContentMixin:
         return " ".join(text_parts)
 
     def _build_post_namespace(self, data):
+        pk_val = data.get("pk") if data.get("pk") is not None else data.get("id")
         seo = data.get("seo_data") or {}
         author = data.get("author") or {}
         return SimpleNamespace(
-            id=data.get("id"),
-            pk=data.get("pk", data.get("id")),
+            id=pk_val,
+            pk=pk_val,
             title=data.get("title", ""),
             content=data.get("content", ""),
             visibility=int(data.get("visibility", 0)),
@@ -257,15 +258,7 @@ class ExternalPostListView(EditorJSContentMixin, ListView):
         cached_posts = cache.get(cache_key)
 
         if cached_posts is not None:
-            return [
-                SimpleNamespace(
-                    **{
-                        **item,
-                        "author": SimpleNamespace(**item["author"]),
-                    }
-                )
-                for item in cached_posts
-            ]
+            return [self._build_post_namespace(item) for item in cached_posts]
 
         print("LIST GET CACHED, THIS ONLY SHOWED ONCE PER POST")
 
