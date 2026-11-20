@@ -17,35 +17,35 @@ services:
       - app-network
 
   memcached:
-  build:
-    context: .
-    dockerfile: Dockerfile.memcached
-  container_name: memcached_container
-  restart: always
-  ports:
-    - "127.0.0.1:11211:11211"
-  environment:
-    MEMCACHED_USER: ${MEMCACHED_USER}
-    MEMCACHED_PASSWORD: ${MEMCACHED_PASSWORD}
-  command: >
-    sh -c "
-    echo \"$$MEMCACHED_PASSWORD\" | saslpasswd2 -p -c -f /etc/sasl2/memcached-sasldb2 -u memcached \"$$MEMCACHED_USER\" &&
-    chown memcache:memcache /etc/sasl2/memcached-sasldb2 &&
-    exec memcached -S -m 1024 -c 2048 -t 4 -I 5m -u memcache
-    "
-  deploy:
-    resources:
-      limits:
-        memory: 1536M
-      reservations:
-        memory: 1024M
-  healthcheck:
-    test: echo stats | nc localhost 11211
-    interval: 30s
-    timeout: 5s
-    retries: 3
-  networks:
-    - app-network
+    build:
+      context: .
+      dockerfile: Dockerfile.memcached
+    container_name: memcached_container
+    restart: always
+    ports:
+      - "127.0.0.1:11211:11211"
+    environment:
+      MEMCACHED_USER: ${MEMCACHED_USER}
+      MEMCACHED_PASSWORD: ${MEMCACHED_PASSWORD}
+    command: >
+      sh -c "
+      echo \"$$MEMCACHED_PASSWORD\" | saslpasswd2 -p -c -f /etc/sasl2/memcached-sasldb2 -u memcached \"$$MEMCACHED_USER\" &&
+      chown memcache:memcache /etc/sasl2/memcached-sasldb2 &&
+      exec memcached -S -m 1024 -c 2048 -t 4 -I 5m -u memcache
+      "
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+        reservations:
+          memory: 1024M
+    healthcheck:
+      test: echo stats | nc localhost 11211
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - app-network
 
   nginx:
     image: nginx:latest
