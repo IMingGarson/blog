@@ -33,17 +33,19 @@ MAILERS = {
     "default": {
         "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
         "OPTIONS": {
-            "host": "smtp.gmail.com",
+            "host": os.environ.get("EMAIL_HOST", None),
             "port": 587,
-            "username": os.environ.get("EMAIL_HOST_USER"),
-            "password": os.environ.get("EMAIL_HOST_PASSWORD"),
+            "username": os.environ.get("AWS_SES_SMTP_USER", ""),
+            "password": os.environ.get("EMAIL_HOST_PASSWORD", ""),
             "use_tls": True,
+            "use_ssl": False,
+            "timeout": 15,
         },
     }
 }
-sender_name = "Timmy 部落格"
-sender_email = os.environ.get("EMAIL_HOST_USER")
-DEFAULT_FROM_EMAIL = formataddr((sender_name, sender_email))
+SENDER_NAME = "Timmy Blog"
+SENDER_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "no-reply@timmycapital.com.tw")
+DEFAULT_FROM_EMAIL = formataddr((SENDER_NAME, SENDER_EMAIL))
 
 ALLOWED_HOSTS = ["*"]
 CSRF_TRUSTED_ORIGINS = []

@@ -53,18 +53,16 @@ def send_sns_otp_sms(phone_number: str, code: str) -> bool:
 def send_otp_email(email_address: str, code: str) -> bool:
     """使用 Django 內建 SMTP 發送 Email OTP 驗證碼"""
     subject = "【Timmy Blog】註冊驗證碼"
-    message = f"""
-    歡迎加入 Timmy Blog！
-    
-    您的 Email 驗證碼為：{code}
-    
-    請在 10 分鐘內回到網站輸入此驗證碼。若您並未請求此驗證碼，請忽略這封信。
-    """
+    message = (
+        f"歡迎加入 Timmy Blog！\n\n"
+        f"您的 Email 驗證碼為：{code}\n\n"
+        f"請在 10 分鐘內回到網站輸入此驗證碼。若您並未請求此驗證碼，請忽略這封信。"
+    )
     try:
         send_mail(
             subject=subject,
             message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            from_email="no-reply@timmycapital.com.tw",
             recipient_list=[email_address],
             fail_silently=False,
         )
